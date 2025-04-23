@@ -29,7 +29,7 @@ class TestOutcomeOptions(Enum):
     MATCH = "MATCH"
     DIFFER = "DIFFER"
     NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
-
+    UNKNOWN = "UNKNOWN"
 
 # Test Case Report
 def add_test_case_report(test_case_dir, generated_file_name):
@@ -132,8 +132,8 @@ def compare_json_values(
                 notes = f"List length mismatch at '{generated_ids[i]}' for key '{json_key_path.split('.')[-1]}'. Expected: {len(reference_value)}; got: {len(generated_value)}"
                 add_test_result(
                     specification_test,
-                    generated_id,
-                    reference_id,
+                    generated_id if not isinstance(generated_id, int) else None,
+                    reference_id if not isinstance(reference_id, int) else None,
                     TestOutcomeOptions.DIFFER.value,
                 )
                 errors.append(notes)
@@ -141,8 +141,8 @@ def compare_json_values(
             else:
                 add_test_result(
                     specification_test,
-                    generated_id,
-                    reference_id,
+                    generated_id if not isinstance(generated_id, int) else None,
+                    reference_id if not isinstance(reference_id, int) else None,
                     TestOutcomeOptions.MATCH.value,
                 )
 
@@ -170,6 +170,22 @@ def compare_json_values(
             specification_test["evaluation_criteria"] = (
                 EvaluationCriteriaOptions.REFERENCE.value
             )
+
+            if (generated_value in object_id_map and object_id_map[generated_value] == reference_value) or ("schedule" in json_key_path):
+                add_test_result(
+                    specification_test,
+                    generated_id if not isinstance(generated_id, int) else None,
+                    reference_id if not isinstance(reference_id, int) else None,
+                    TestOutcomeOptions.MATCH.value,
+                )
+
+            else:
+                add_test_result(
+                    specification_test,
+                    generated_id,
+                    reference_id,
+                    TestOutcomeOptions.UNKNOWN.value,
+                )
 
         if compare_value is False:
             continue  # No comparison needed, just check for existence
@@ -201,8 +217,8 @@ def compare_json_values(
 
         add_test_result(
             specification_test,
-            generated_id,
-            reference_id,
+            generated_id if not isinstance(generated_id, int) else None,
+            reference_id if not isinstance(reference_id, int) else None,
             test_outcome,
         )
 
