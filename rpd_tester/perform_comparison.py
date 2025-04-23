@@ -4,7 +4,6 @@ from enum import Enum
 
 from rpd_tester.utils import *
 from rpd_tester.map_objects import map_objects
-from rpd_tester.special_cases import compare_azimuth, compare_fan_power, compare_pump_power
 
 # RPD Generation Test Report
 results_data = {
