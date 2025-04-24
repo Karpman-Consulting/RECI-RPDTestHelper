@@ -210,7 +210,7 @@ def compare_json_values(
                     specification_test,
                     generated_id if not isinstance(generated_id, int) else None,
                     reference_id if not isinstance(reference_id, int) else None,
-                    TestOutcomeOptions.DIFFER.value,
+                    TestOutcomeOptions.NOT_IMPLEMENTED.value,
                     notes
                 )
                 warnings.append(notes)
