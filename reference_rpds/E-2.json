@@ -45264,6 +45264,7 @@
                         "outdoor_low_for_loop_supply_reset_temperature": 15.6,
                         "loop_supply_temperature_at_outdoor_high": 6.7,
                         "loop_supply_temperature_at_outdoor_low": 12.2,
+                        "minimum_flow_fraction": 0.25,
                         "is_sized_using_coincident_load": true,
                         "operation": "CONTINUOUS",
                         "flow_control": "FIXED_FLOW",

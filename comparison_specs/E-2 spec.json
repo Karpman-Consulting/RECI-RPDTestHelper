@@ -717,7 +717,7 @@
         "compare-value": true
         },
         {
-        "json-key-path": "$.ruleset_model_descriptions[0].fluid_loops[*].cooling_or_condensing_design_and_control.minimum_flow_fraction",
+        "json-key-path": "$.ruleset_model_descriptions[0].fluid_loops[?(@.type == \"COOLING\")].cooling_or_condensing_design_and_control.minimum_flow_fraction",
         "compare-value": true,
         "tolerance": 0.01
         },
