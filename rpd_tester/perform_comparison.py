@@ -98,6 +98,9 @@ def compare_json_values(
     compare_value = spec.get("compare-value", True)
     tolerance = spec.get("tolerance", 0)
 
+    if json_key_path.split('.')[-1] == "efficiency_metric_values":
+        print("here")
+
     warnings = []
     errors = []
 
@@ -107,6 +110,9 @@ def compare_json_values(
         generated_value = generated_values[generated_id]
         reference_value = reference_values[generated_id]
         reference_id = object_id_map.get(generated_id)
+
+        if isinstance(reference_id, dict):
+            reference_id = reference_id.get("id")
 
         if generated_value is None and reference_value is not None:
             notes = f"Missing value for key '{json_key_path.split('.')[-1]}' at {generated_ids[i]}"
@@ -188,9 +194,31 @@ def compare_json_values(
                 )
 
         if compare_value is False:
+            # Check for presence of generated value
+            # TODO: "MATCH" and "DIFFER" don't feel like the appropriate outcome labels here
+            if generated_value:
+                add_test_result(
+                    specification_test,
+                    generated_id if not isinstance(generated_id, int) else None,
+                    reference_id if not isinstance(reference_id, int) else None,
+                    TestOutcomeOptions.MATCH.value,
+                )
+            else:
+                notes = f"Missing value for key '{json_key_path.split('.')[-1]}' at {generated_ids[i]}"
+                add_test_result(
+                    specification_test,
+                    generated_id if not isinstance(generated_id, int) else None,
+                    reference_id if not isinstance(reference_id, int) else None,
+                    TestOutcomeOptions.DIFFER.value,
+                    notes
+                )
+                warnings.append(notes)
             continue  # No comparison needed, just check for existence
 
         if reference_value is None and generated_value is None:
+            # TODO fluid_loops[*].cooling_or_condensing_design_and_control.minimum_flow_fraction
+            """Test results are blank for 3 of these. Test cases E-2, F-210, and F-220. No reference values for 
+            minimum_flow_fraction in fluid_loops[*].cooling_or_condensing_design_and_control"""
             continue  # Both values are None, no need to compare
 
         # Evaluate based on value comparison
@@ -205,6 +233,13 @@ def compare_json_values(
         if does_match:
             test_outcome = TestOutcomeOptions.MATCH.value
         if not does_match and reference_value is None:
+            # TODO boilers[*].efficiency_metric_values and boilers[*].efficiency_metric_types
+            """Test results are blank for both of these in test case F-130. No reference values for 
+            efficiency_metric_values or efficiency_metric_types in boilers[*]"""
+
+            # TODO chillers[*].minimum_load_ratio
+            """Test results are blank for these in test cases F-190, F-200, and F-210. No reference 
+            values for minimum_load_ratio in chillers[*]"""
             warnings.append(
                 f"Extra data provided at '{generated_ids[i]}' for key '{json_key_path.split('.')[-1]}'. Expected: 'None'; got: '{generated_value}'"
             )
@@ -1124,6 +1159,9 @@ def handle_ordered_comparisons(
         for generated_pump in generated_pumps:
             generated_pump_id = generated_pump["id"]
             reference_pump_id = object_id_map.get(generated_pump_id)
+
+            if isinstance(reference_pump_id, dict):
+                reference_pump_id = reference_pump_id.get("id")
 
             if not reference_pump_id:
                 continue
