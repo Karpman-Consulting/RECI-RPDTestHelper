@@ -4,19 +4,12 @@ import json
 import math
 from difflib import get_close_matches
 from itertools import chain
-from jsonpath2 import match
 from typing import TypedDict
 
 
 class ZonesTerminalsServedByHVACSys(TypedDict):
     terminal_list: list[str]
     zone_list: list[str]
-
-
-def create_jsonpath_value_dict(jpath, obj):
-    return {
-        m.node.tojsonpath(): m.current_value for m in match(ensure_root(jpath), obj)
-    }
 
 
 def ensure_root(jpath):
