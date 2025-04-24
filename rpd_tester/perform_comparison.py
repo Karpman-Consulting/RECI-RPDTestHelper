@@ -98,15 +98,14 @@ def compare_json_values(
     compare_value = spec.get("compare-value", True)
     tolerance = spec.get("tolerance", 0)
 
-    if json_key_path.split('.')[-1] == "efficiency_metric_values":
-        print("here")
-
     warnings = []
     errors = []
 
     for i, generated_id in enumerate(generated_ids):
+
         if generated_id not in generated_values and i in generated_values:
             generated_id = i
+
         generated_value = generated_values[generated_id]
         reference_value = reference_values[generated_id]
         reference_id = object_id_map.get(generated_id)
@@ -123,6 +122,7 @@ def compare_json_values(
                 TestOutcomeOptions.NOT_IMPLEMENTED.value,
             )
             warnings.append(notes)
+
             continue
 
         if isinstance(reference_value, dict):
@@ -144,6 +144,7 @@ def compare_json_values(
                 )
                 errors.append(notes)
                 continue
+
             else:
                 add_test_result(
                     specification_test,
@@ -195,7 +196,6 @@ def compare_json_values(
 
         if compare_value is False:
             # Check for presence of generated value
-            # TODO: "MATCH" and "DIFFER" don't feel like the appropriate outcome labels here
             if generated_value:
                 add_test_result(
                     specification_test,
@@ -203,6 +203,7 @@ def compare_json_values(
                     reference_id if not isinstance(reference_id, int) else None,
                     TestOutcomeOptions.MATCH.value,
                 )
+
             else:
                 notes = f"Missing value for key '{json_key_path.split('.')[-1]}' at {generated_ids[i]}"
                 add_test_result(
@@ -213,12 +214,10 @@ def compare_json_values(
                     notes
                 )
                 warnings.append(notes)
+
             continue  # No comparison needed, just check for existence
 
         if reference_value is None and generated_value is None:
-            # TODO fluid_loops[*].cooling_or_condensing_design_and_control.minimum_flow_fraction
-            """Test results are blank for 3 of these. Test cases E-2, F-210, and F-220. No reference values for 
-            minimum_flow_fraction in fluid_loops[*].cooling_or_condensing_design_and_control"""
             continue  # Both values are None, no need to compare
 
         # Evaluate based on value comparison
@@ -230,21 +229,17 @@ def compare_json_values(
         # Else: the values are strings, ints, or floats, and we need to compare them
         notes = ""
         does_match = compare_values(generated_value, reference_value, tolerance)
+
         if does_match:
             test_outcome = TestOutcomeOptions.MATCH.value
-        if not does_match and reference_value is None:
-            # TODO boilers[*].efficiency_metric_values and boilers[*].efficiency_metric_types
-            """Test results are blank for both of these in test case F-130. No reference values for 
-            efficiency_metric_values or efficiency_metric_types in boilers[*]"""
 
-            # TODO chillers[*].minimum_load_ratio
-            """Test results are blank for these in test cases F-190, F-200, and F-210. No reference 
-            values for minimum_load_ratio in chillers[*]"""
+        if not does_match and reference_value is None:
             warnings.append(
                 f"Extra data provided at '{generated_ids[i]}' for key '{json_key_path.split('.')[-1]}'. Expected: 'None'; got: '{generated_value}'"
             )
             # Avoid adding a test result when extra data is provided
             continue
+
         elif not does_match:
             notes = f"Value mismatch at '{generated_ids[i]}' for key '{json_key_path.split('.')[-1]}'. Expected: '{reference_value}'; got: '{generated_value}'"
             errors.append(notes)
