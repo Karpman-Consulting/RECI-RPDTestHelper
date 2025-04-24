@@ -102,11 +102,16 @@ def compare_json_values(
     errors = []
 
     for i, generated_id in enumerate(generated_ids):
+
         if generated_id not in generated_values and i in generated_values:
             generated_id = i
+
         generated_value = generated_values[generated_id]
         reference_value = reference_values[generated_id]
         reference_id = object_id_map.get(generated_id)
+
+        if isinstance(reference_id, dict):
+            reference_id = reference_id.get("id")
 
         if generated_value is None and reference_value is not None:
             notes = f"Missing value for key '{json_key_path.split('.')[-1]}' at {generated_ids[i]}"
@@ -188,6 +193,24 @@ def compare_json_values(
                 )
 
         if compare_value is False:
+            # Check for presence of generated value
+            if generated_value:
+                add_test_result(
+                    specification_test,
+                    generated_id if not isinstance(generated_id, int) else None,
+                    reference_id if not isinstance(reference_id, int) else None,
+                    TestOutcomeOptions.MATCH.value,
+                )
+            else:
+                notes = f"Missing value for key '{json_key_path.split('.')[-1]}' at {generated_ids[i]}"
+                add_test_result(
+                    specification_test,
+                    generated_id if not isinstance(generated_id, int) else None,
+                    reference_id if not isinstance(reference_id, int) else None,
+                    TestOutcomeOptions.NOT_IMPLEMENTED.value,
+                    notes
+                )
+                warnings.append(notes)
             continue  # No comparison needed, just check for existence
 
         if reference_value is None and generated_value is None:
@@ -202,14 +225,17 @@ def compare_json_values(
         # Else: the values are strings, ints, or floats, and we need to compare them
         notes = ""
         does_match = compare_values(generated_value, reference_value, tolerance)
+
         if does_match:
             test_outcome = TestOutcomeOptions.MATCH.value
+
         if not does_match and reference_value is None:
             warnings.append(
                 f"Extra data provided at '{generated_ids[i]}' for key '{json_key_path.split('.')[-1]}'. Expected: 'None'; got: '{generated_value}'"
             )
             # Avoid adding a test result when extra data is provided
             continue
+
         elif not does_match:
             notes = f"Value mismatch at '{generated_ids[i]}' for key '{json_key_path.split('.')[-1]}'. Expected: '{reference_value}'; got: '{generated_value}'"
             errors.append(notes)
@@ -1124,6 +1150,9 @@ def handle_ordered_comparisons(
         for generated_pump in generated_pumps:
             generated_pump_id = generated_pump["id"]
             reference_pump_id = object_id_map.get(generated_pump_id)
+
+            if isinstance(reference_pump_id, dict):
+                reference_pump_id = reference_pump_id.get("id")
 
             if not reference_pump_id:
                 continue
