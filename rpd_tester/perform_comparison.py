@@ -35,7 +35,7 @@ class TestOutcomeOptions(Enum):
 # Test Case Report
 def add_test_case_report(test_case_dir, generated_file_name):
     files_utilized = [
-        f.name for f in test_case_dir.iterdir() if f.is_file() and f.suffix not in [".json", ".gitkeep"]
+        f.name for f in test_case_dir.iterdir() if f.is_file() and f.suffix not in [".gitkeep"]
     ]
     test_case_report = {
         "test_id": test_case_dir.name,
@@ -1336,7 +1336,7 @@ def run_comparison_for_all_tests(test_dir: Path):
         test = test_case_dir.name
 
         generated_json_file = next(
-            (f for f in test_case_dir.iterdir() if f.suffix == ".json"), None
+            (f for f in test_case_dir.iterdir() if f.suffix == ".rpd"), None
         )
         if not generated_json_file:
             continue
