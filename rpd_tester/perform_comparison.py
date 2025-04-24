@@ -35,7 +35,7 @@ class TestOutcomeOptions(Enum):
 # Test Case Report
 def add_test_case_report(test_case_dir, generated_file_name):
     files_utilized = [
-        f.name for f in test_case_dir.iterdir() if f.is_file() and f.suffix not in [".gitkeep"]
+        f.name for f in test_case_dir.iterdir() if f.is_file() and f.name != ".gitkeep"
     ]
     test_case_report = {
         "test_id": test_case_dir.name,
