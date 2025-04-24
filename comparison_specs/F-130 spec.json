@@ -377,11 +377,11 @@
         "tolerance": 1.0
         },
         {
-        "json-key-path": "$.ruleset_model_descriptions[0].boilers[*].efficiency_metric_values",
+        "json-key-path": "$.ruleset_model_descriptions[0].boilers[*].efficiency_metric",
         "compare-value": true
         },
         {
-        "json-key-path": "$.ruleset_model_descriptions[0].boilers[*].efficiency_metric_types",
+        "json-key-path": "$.ruleset_model_descriptions[0].boilers[*].efficiency",
         "compare-value": true
         },
         {
