@@ -107,6 +107,9 @@ def compare_json_values(
         if generated_id not in generated_values and i in generated_values:
             generated_id = i
 
+        if generated_id not in generated_values:
+            continue  # Skip if generated_id was not mapped successfully
+
         generated_value = generated_values[generated_id]
         reference_value = reference_values[generated_id]
         reference_id = object_id_map.get(generated_id)
@@ -827,6 +830,122 @@ def handle_ordered_comparisons(
         warnings.extend(general_comparison_warnings)
         errors.extend(general_comparison_errors)
 
+    elif "constructions[" in json_key_path:
+        aligned_generated_values = {}
+        aligned_reference_values = {}
+
+        generated_constructions = find_all(
+            json_key_path[
+                : json_key_path.index("].", json_key_path.index("constructions")) + 1
+            ],
+            generated_json,
+        )
+        generated_construction_ids = [construction["id"] for construction in generated_constructions]
+
+        for generated_construction in generated_constructions:
+            generated_construction_id = generated_construction["id"]
+            reference_construction_id = object_id_map.get(generated_construction_id)
+
+            if isinstance(reference_construction_id, dict):
+                reference_construction_id = reference_construction_id.get("id")
+
+            if not reference_construction_id:
+                continue
+
+            construction_data_path = json_key_path[json_key_path.index("].", json_key_path.index("constructions")) + 2:]
+            generated_value = find_one(construction_data_path, generated_construction)
+            aligned_generated_values[generated_construction_id] = generated_value
+
+            aligned_reference_value = find_one(
+                json_key_path.replace(
+                    "constructions[*]",
+                    f"constructions[?(@.id == '{reference_construction_id}')]",
+                ),
+                reference_json,
+                None,
+            )
+
+            aligned_reference_values[generated_construction_id] = aligned_reference_value
+
+        if all(value is None for value in aligned_generated_values.values()):
+            notes = f"Missing key {json_key_path.split('.')[-1]}"
+            add_test_result(
+                specification_test,
+                None,
+                None,
+                TestOutcomeOptions.NOT_IMPLEMENTED.value,
+            )
+            warnings.append(notes)
+            return warnings, errors
+
+        general_comparison_warnings, general_comparison_errors = compare_json_values(
+            path_spec,
+            aligned_generated_values,
+            aligned_reference_values,
+            generated_construction_ids,
+            specification_test,
+            object_id_map,
+        )
+        errors.extend(general_comparison_errors)
+
+    elif "materials[" in json_key_path:
+        aligned_generated_values = {}
+        aligned_reference_values = {}
+
+        generated_materials = find_all(
+            json_key_path[
+                : json_key_path.index("].", json_key_path.index("materials")) + 1
+            ],
+            generated_json,
+        )
+        generated_material_ids = [material["id"] for material in generated_materials]
+
+        for generated_material in generated_materials:
+            generated_material_id = generated_material["id"]
+            reference_material_id = object_id_map.get(generated_material_id)
+
+            if isinstance(reference_material_id, dict):
+                reference_material_id = reference_material_id.get("id")
+
+            if not reference_material_id:
+                continue
+
+            material_data_path = json_key_path[json_key_path.index("].", json_key_path.index("materials")) + 2:]
+            generated_value = find_one(material_data_path, generated_material)
+            aligned_generated_values[generated_material_id] = generated_value
+
+            aligned_reference_value = find_one(
+                json_key_path.replace(
+                    "materials[*]",
+                    f"materials[?(@.id == '{reference_material_id}')]",
+                ),
+                reference_json,
+                None,
+            )
+
+            aligned_reference_values[generated_material_id] = aligned_reference_value
+
+        if all(value is None for value in aligned_generated_values.values()):
+            notes = f"Missing key {json_key_path.split('.')[-1]}"
+            add_test_result(
+                specification_test,
+                None,
+                None,
+                TestOutcomeOptions.NOT_IMPLEMENTED.value,
+            )
+            warnings.append(notes)
+            return warnings, errors
+
+        general_comparison_warnings, general_comparison_errors = compare_json_values(
+            path_spec,
+            aligned_generated_values,
+            aligned_reference_values,
+            generated_material_ids,
+            specification_test,
+            object_id_map,
+        )
+        errors.extend(general_comparison_errors)
+
     elif "heating_ventilating_air_conditioning_systems[" in json_key_path:
         aligned_generated_values = {}
         aligned_reference_values = {}
@@ -1280,6 +1399,8 @@ def run_file_comparison(
             if any(
                 group in json_key_path
                 for group in [
+                    "constructions[",
+                    "materials[",
                     "zones[",
                     "surfaces[",
                     "terminals[",
@@ -1342,7 +1463,7 @@ def run_comparison_for_all_tests(test_dir: Path):
             continue
 
         spec_file = spec_dir / f"{test} spec.json"
-        reference_json_file = reference_dir / f"{test}.json"
+        reference_json_file = reference_dir / f"{test}.rpd"
 
         if (
             generated_json_file.is_file()
