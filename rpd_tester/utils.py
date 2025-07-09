@@ -12,6 +12,18 @@ class ZonesTerminalsServedByHVACSys(TypedDict):
     zone_list: list[str]
 
 
+class SurfacesWithConstructionAssigned(TypedDict):
+    exterior_walls: int
+    rooves: int
+    below_grade_surfaces: int
+    interior_surfaces: int
+    primary_layers_length: int
+    framing_layers_length: int
+    u_factor: float | None
+    c_factor: float | None
+    f_factor: float | None
+
+
 def ensure_root(jpath):
     return jpath if jpath.startswith("$") else "$." + jpath
 
@@ -274,6 +286,71 @@ def get_dict_of_zones_and_terminals_served_by_hvac_sys(
     return dict_of_zones_and_terminals_served_by_hvac_sys
 
 
+def get_dict_of_surfaces_with_construction_assigned(rpd: dict) -> dict[str, SurfacesWithConstructionAssigned]:
+    dict_of_surfaces_details: dict[
+        str, SurfacesWithConstructionAssigned
+    ] = {}
+
+    for construction in find_all(
+        "$.ruleset_model_descriptions[*].constructions[*]",
+        rpd,
+    ):
+        construction_id = construction["id"]
+        if construction_id not in dict_of_surfaces_details:
+            dict_of_surfaces_details[construction_id] = {
+                "exterior_walls": 0,
+                "rooves": 0,
+                "below_grade_surfaces": 0,
+                "interior_surfaces": 0,
+                "primary_layers_length": 0,
+                "framing_layers_length": 0,
+                "u_factor": None,
+                "c_factor": None,
+                "f_factor": None,
+            }
+        dict_of_surfaces_details[construction_id]["primary_layers_length"] = len(construction.get("primary_layers", []))
+        dict_of_surfaces_details[construction_id]["framing_layers_length"] = len(construction.get("framing_layers", []))
+        dict_of_surfaces_details[construction_id]["u_factor"] = construction.get("u_factor")
+        dict_of_surfaces_details[construction_id]["c_factor"] = construction.get("c_factor")
+        dict_of_surfaces_details[construction_id]["f_factor"] = construction.get("f_factor")
+
+    for surface in find_all(
+        "$.ruleset_model_descriptions[*].buildings[*].building_segments[*].zones[*].surfaces[*]",
+        rpd,
+    ):
+        surface_adjacent_to = surface.get("adjacent_to")
+        classification = surface.get("classification")
+        tilt = surface.get("tilt", 90)
+        construction = surface.get("construction")
+
+        if not construction:
+            continue
+
+        # Below grade surface
+        if surface_adjacent_to == "GROUND":
+            dict_of_surfaces_details[construction][
+                "below_grade_surfaces"
+            ] += 1
+        # Interior surface
+        elif surface_adjacent_to == "INTERIOR":
+            dict_of_surfaces_details[construction][
+                "interior_surfaces"
+            ] += 1
+        # Exterior wall or roof
+        elif surface_adjacent_to == "EXTERIOR":
+            if classification == "WALL":
+                dict_of_surfaces_details[construction]["exterior_walls"] += 1
+            elif classification == "CEILING":
+                dict_of_surfaces_details[construction]["rooves"] += 1
+            elif classification is None:
+                if tilt < 60:
+                    dict_of_surfaces_details[construction]["rooves"] += 1
+                elif 60 <= tilt < 120:
+                    dict_of_surfaces_details[construction]["exterior_walls"] += 1
+
+    return dict_of_surfaces_details
+
+
 def load_json_file(file_path):
     """Loads JSON data from a file."""
     with open(file_path, "r") as file:
@@ -294,7 +371,7 @@ def find_best_match(target, candidates, cutoff=0.4):
     return matches[0] if matches else None
 
 
-def compare_values(value, reference_value, tolerance):
+def compare_values(value, reference_value, absolute_tolerance=None, relative_tolerance=None):
     """Compares a generated value with a reference value based on the tolerance."""
     if isinstance(reference_value, str):
         return value == reference_value
@@ -302,8 +379,10 @@ def compare_values(value, reference_value, tolerance):
     if isinstance(reference_value, bool):
         return value == reference_value
 
-    if isinstance(reference_value, (int, float)):
-        return math.isclose(value, reference_value, abs_tol=tolerance)
+    if isinstance(reference_value, (int, float)) and absolute_tolerance:
+        return math.isclose(value, reference_value, abs_tol=absolute_tolerance)
+    elif isinstance(reference_value, (int, float)) and relative_tolerance:
+        return math.isclose(value, reference_value, rel_tol=relative_tolerance)
 
     return False
 
@@ -346,7 +425,7 @@ def compare_fan_power(generated_fans, expected_w_per_flow):
             warnings.append(f"Missing design electric power for '{fan['id']}'")
             continue
 
-        if not compare_values(design_power, expected_w_per_flow * design_flow, 1):
+        if not compare_values(design_power, expected_w_per_flow * design_flow, abs_tol=1):
             errors.append(
                 f"Value mismatch at '{fan['id']}'. Expected: {expected_w_per_flow * design_flow}; got: {design_power}"
             )
@@ -375,8 +454,11 @@ def compare_pump_power(pump: dict, expected_w_per_flow: float):
     return warnings, errors
 
 
-def compare_attributes(target, candidate, attr, generated_zone_id, reference_zone_id):
+def compare_attributes(target, candidate, attr, generated_zone_id=None, reference_zone_id=None):
     """Compares attributes between two objects, with special rules for azimuth and area."""
+    if attr not in target:
+        return False
+
     target_value, candidate_value = target.get(attr), candidate.get(attr)
     if attr == "azimuth":
         return compare_azimuth(
@@ -394,6 +476,9 @@ def compare_attributes(target, candidate, attr, generated_zone_id, reference_zon
     elif isinstance(target_value, list):
         candidate_length = len(candidate_value) if candidate_value else 0
         return len(target_value) == candidate_length
+
+    elif isinstance(target_value, (int, float)):
+        return compare_values(target_value, candidate_value, relative_tolerance=0.01)
 
     else:
         return target_value == candidate_value

@@ -8,6 +8,7 @@ GENERATION_SOFTWARE_VERSION = ""
 MODELING_SOFTWARE_NAME = ""
 MODELING_SOFTWARE_VERSION = ""
 SCHEMA_VERSION = "0.0.36"
+SCHEMA_VERSION = "0.7.1"
 RULESET_NAME = "ASHRAE Standard 90.1-2019, Performance Rating Method"
 RULESET_CHECKING_SPECIFICATION_NAME = "ASHRAE Standard 90.1-2019, Performance Rating Method"
 # --------------------------------------------------------------------
